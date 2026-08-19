@@ -77,10 +77,18 @@ canonical USDC first:
 cast call <org> "baseToken()(address)" --rpc-url <rpc>
 ```
 
-Base **mainnet** (for step 6): PCRF Entity = `0xf0e88395c5dbb2b89de58a94e36d71495ac3637b`
-(verified live 2026-08-19: EIP-1167 clone, `baseToken()` == `0x8335…2913`,
-registry fee 150 zoc = 1.5%). Resolve WCK / Direct Relief mainnet entities from
-`api.endaoment.org` the same way before allowlisting.
+Base **mainnet** entities (for step 6) — all three resolved from
+`api.endaoment.org` and verified live on-chain 2026-08-19 (code present,
+`baseToken()` == canonical Base USDC `0x8335…2913`, `entityType` == 1):
+
+| Org | EIN | Base mainnet Entity |
+|---|---|---|
+| Palestine Children's Relief Fund | 93-1057665 | `0xf0e88395c5dbb2b89de58a94e36d71495ac3637b` |
+| World Central Kitchen | 27-3521132 | `0x54b85539a40e166702c584f13c50787e6ea6af71` |
+| Direct Relief | 95-1831116 | `0xad557aee4cee7a33b4a24e90fae8b17ec71b4e8a` |
+
+Re-verify each with the `cast call … baseToken()` check above immediately
+before allowlisting.
 
 ## 3. Wire the address into the app env (BOTH vars — runbook bug fixed 2026-05-23)
 
