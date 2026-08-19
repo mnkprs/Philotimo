@@ -1,0 +1,6 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1040, "h": 2800, "expand": "fill", "print": "flow", "title": "Eudaimonia README" }
+  ],
+  "launch": { "view": "focused", "file": "Main.dc.html" }
+}
