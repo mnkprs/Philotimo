@@ -2,14 +2,17 @@
 
 A transparent, consumer-facing donation platform built on Base L2. Donors pay with a credit card; the money is converted to USDC on-chain, routed through an auditable smart contract, and delivered to vetted charities via [Endaoment](https://endaoment.org)'s decentralized philanthropy infrastructure. Every gift produces a public, verifiable receipt that traces the money from donor to charity — settlement, fees, and final delivery rendered as a shareable story.
 
-The name comes from the Greek *φιλότιμο* (philotimo): the sense of duty to do right by others.
+The name comes from the Greek *εὐδαιμονία* (eudaimonia): human flourishing, the good life. The repository is named for a second Greek word, *φιλότιμο* (philotimo) — the sense of duty to do right by others.
 
 ## How it works
 
-```
-[Donor] ──credit card──► [Stripe Crypto Onramp] ──mints USDC on Base──►
-[TransparentDonationRouter] ──1% fee──► [Treasury]
-                           └──99%─────► [Endaoment org Entity] ──► charity
+```mermaid
+flowchart LR
+    donor([Donor]) -- "fiat, by card" --> onramp["Stripe Crypto Onramp"]
+    onramp -- "USDC on Base" --> router["TransparentDonationRouter"]
+    router -- "1% fee" --> treasury["Treasury"]
+    router -- "99%" --> org["Endaoment org Entity"]
+    org --> charity([Charity])
 ```
 
 1. **Select** — the donor picks a curated, urgent cause on the landing page.
