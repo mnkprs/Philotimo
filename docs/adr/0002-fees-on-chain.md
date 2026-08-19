@@ -65,3 +65,46 @@ Stripe mints USDC ≈ (grossCents − Stripe card fee) into router on Base
 - Epic 4 owns the router implementation. Phase 3 tests in that epic must include: 1%/99% split exact-rounding, zero-amount donation reverts, treasury address change requires governance, and re-entrancy guards on the Endaoment forwarding call.
 - The on-chain fee constant lives in `TransparentDonationRouter.sol` only. `src/lib/checkout/fees.ts` must derive its display number from the same constant once the contract is wired (Epic 4 will add a `src/lib/contracts/router.ts` that exposes it).
 - Reconfirm at Epic 5/6 (receipts) that the on-chain split tx is the single artifact we cite on the receipt page.
+
+## Amendment (2026-08-19) — how the split is actually triggered
+
+The diagram above says "`router.split()` — single tx, atomic", but Stripe
+Crypto Onramp settles with a **plain ERC-20 transfer** to
+`destination_wallet_address`: it cannot call a contract function or attach
+calldata. The originally implemented router only exposed a pull-based
+`donate(org, amount)` (`safeTransferFrom` the caller), so a Stripe settlement
+would have landed as an unroutable balance — flagged as the critical finding of
+the 2026-08-19 adversarial review.
+
+Resolution (implemented pre-deployment, so no migration was needed):
+
+- The router now also exposes `routeHeld(sessionRef, org, amount)`, callable
+  by an owner-appointed **operator** (or the owner as fallback), which splits
+  USDC **already held** by the contract 1%/99% and forwards the net via the
+  org's `donate()`. Each `sessionRef` (`keccak256` of the Stripe session id)
+  is consumed exactly once on-chain, making webhook double-fires harmless.
+- The settlement tx (Stripe → router) and the split tx (`routeHeld`) are now
+  **two on-chain transactions**. The transparency promise holds: the split is
+  still a single atomic on-chain tx, emitting
+  `HeldDonationRouted(sessionRef, org, gross, fee, net)`, and receipts should
+  cite the `routeHeld` tx (settlement tx proves arrival, `routeHeld` tx proves
+  the split).
+- The wallet-donor path (`donate`) is unchanged and remains single-tx.
+- Follow-up: automate the settled-webhook → `routeHeld` trigger with a backend
+  relayer job holding the operator key (which never custodies funds). Until it
+  ships, routing is a manual operator action documented in
+  `prompts/HUMAN-ACTIONS.md`.
+- Follow-up (review 2026-08-19, security HIGH / code-review MEDIUM — must land
+  WITH or BEFORE the relayer automation): `routeHeld`'s `(sessionRef, org,
+  amount)` triple is caller-supplied and bounded only by the router's POOLED
+  balance, not per session — the contract cannot observe plain ERC-20
+  settlements. With multiple unrouted settlements in flight, a mis-keyed or
+  compromised-operator call can consume other sessions' held funds (only
+  toward allowlisted orgs) and permanently consume a `sessionRef`. Planned
+  hardening for the relayer epic: a per-session commitment step (register the
+  expected `(sessionRef, org, amount)` when the webhook confirms settlement;
+  `routeHeld` executes only registered commitments), plus receipt-decoder
+  cross-verification of `HeldDonationRouted` against the Stripe session
+  record. Interim operational controls: route sessions one at a time,
+  verifying org + 6-decimal amount against the Stripe dashboard before each
+  send (runbook step 5.4).

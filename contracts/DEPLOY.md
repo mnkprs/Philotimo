@@ -73,16 +73,55 @@ integration API (entities are created per-org, not static) and confirm its
 on-chain `baseToken()` is the canonical Base USDC before allowlisting. Emits
 `OrgAllowanceUpdated(org, allowed)` for an on-chain audit trail.
 
-## 4. Wire the address into the frontend
+## 4. Appoint the routing operator (required for the fiat on-ramp path)
 
-No code change. Set the deployed address in the app environment:
+Stripe's Crypto Onramp settles USDC into the router with a **plain ERC-20
+transfer** — it cannot call `donate()`. Held settlements are split by
+`routeHeld(sessionRef, org, amount)`, callable only by the owner or an
+owner-appointed operator (C1). From the `OWNER_ADDRESS` account:
+
+```solidity
+router.setOperator(<operator>);   // zero address disables operator routing
+```
+
+The operator key never custodies funds — it only triggers the split, and only
+toward allowlisted orgs; each `sessionRef` is consumed exactly once on-chain.
+The owner always works as a fallback caller of `routeHeld`. Emits
+`OperatorUpdated(previous, next)`.
+
+## 5. Wire the address into the app env
+
+No code change. Set the deployed address in the app environment — **both**
+the `NEXT_PUBLIC_` frontend var and the server-side var the onramp session
+builder reads (`src/lib/onramp/createSession.ts`):
 
 ```
+ROUTER_ADDRESS_BASE_SEPOLIA=0x<deployed-on-sepolia>
 NEXT_PUBLIC_ROUTER_ADDRESS_BASE_SEPOLIA=0x<deployed-on-sepolia>
+ROUTER_ADDRESS_BASE=0x<deployed-on-mainnet>
 NEXT_PUBLIC_ROUTER_ADDRESS_BASE=0x<deployed-on-mainnet>
 ```
 
 `src/lib/contracts.ts#getRouterAddress(chainId)` then returns the address for
 the active chain (and `undefined` until set). Verify with the
 `src/lib/contracts.test.ts` suite, which hash-binds the frontend
-`DonationRouted` ABI to the on-chain event signature.
+`DonationRouted` ABI to the on-chain event signature. Server-side, mainnet
+session creation refuses until `ROUTER_ADDRESS_BASE` is set.
+
+## 6. Verify the deployed state (post-deployment proof)
+
+`test/fork/DeployedRouterFork.t.sol` ATTACHES to the deployed router on a fork
+and asserts its actual state — immutables, owner, fee constants, allowlist —
+then smoke-runs `donate()` and `routeHeld()` against the real Endaoment org:
+
+```sh
+BASE_RPC_URL=<rpc> ROUTER_ADDRESS=0x<deployed> ENDAOMENT_ORG=0x<org> \
+EXPECTED_TREASURY=0x<treasury> EXPECTED_OWNER=0x<owner> FORK_BLOCK=<n> \
+forge test --match-path 'test/fork/DeployedRouterFork.t.sol'
+```
+
+(For a Base Sepolia deployment, also set `EXPECTED_USDC` to the Sepolia USDC —
+the default expectation is Base mainnet USDC.) The fresh-contract suite
+(`RouterFork.t.sol`) is an integration test of the *code*, not a proof of the
+*deployment* — only this attached suite catches a wrong immutable, wrong
+owner, or missing allowlist entry.

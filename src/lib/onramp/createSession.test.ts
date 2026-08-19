@@ -9,13 +9,35 @@ describe("buildSessionRequest()", () => {
     expect(req.destinationNetwork).toBe("base-sepolia");
   });
 
-  it("throws on mainnet base — no mainnet router address is configured yet", () => {
+  it("throws on mainnet base while ROUTER_ADDRESS_BASE is not configured", () => {
     expect(() =>
       buildSessionRequest(VALID_INPUT, {
         ...TEST_ENV,
         NEXT_PUBLIC_CHAIN: "base",
       }),
-    ).toThrow(/not supported/i);
+    ).toThrow(/ROUTER_ADDRESS_BASE/);
+  });
+
+  it("targets the mainnet router on base once ROUTER_ADDRESS_BASE is configured", () => {
+    const mainnetRouter = "0xAbCdEf1234567890aBcDeF1234567890AbCdEf12";
+    const req = buildSessionRequest(VALID_INPUT, {
+      ...TEST_ENV,
+      NEXT_PUBLIC_CHAIN: "base",
+      ROUTER_ADDRESS_BASE: mainnetRouter,
+    });
+    expect(req.destinationNetwork).toBe("base");
+    expect(req.destinationWalletAddress).toBe(mainnetRouter);
+  });
+
+  it("never routes a base-sepolia session to the mainnet router (chain selects the address)", () => {
+    const req = buildSessionRequest(VALID_INPUT, {
+      ...TEST_ENV,
+      ROUTER_ADDRESS_BASE: "0xAbCdEf1234567890aBcDeF1234567890AbCdEf12",
+    });
+    expect(req.destinationNetwork).toBe("base-sepolia");
+    expect(req.destinationWalletAddress).toBe(
+      TEST_ENV.ROUTER_ADDRESS_BASE_SEPOLIA,
+    );
   });
 
   it("routes settlement to the router contract address (full gross, fee taken on-chain)", () => {

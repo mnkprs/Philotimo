@@ -314,4 +314,238 @@ contract TransparentDonationRouterTest is Test {
         vm.expectRevert(TransparentDonationRouter.ZeroAddress.selector);
         router.setOrgAllowed(address(0), true);
     }
+
+    // --- C1: operator-triggered routing of held (on-ramp settled) USDC ---------
+    //
+    // Stripe Crypto Onramp settles USDC to the router with a PLAIN ERC-20
+    // transfer — it cannot attach donate() calldata. Without a way to route a
+    // balance the contract already holds, every fiat settlement would be
+    // permanently stranded (adversarial review, critical finding C1). routeHeld
+    // closes that gap: an owner-appointed operator (or the owner itself) splits
+    // an already-held gross 1%/99% keyed by a unique session ref, so a
+    // double-fired webhook can never route the same settlement twice.
+
+    /// @dev Mirrors the contract's events for typed `vm.expectEmit`.
+    event OperatorUpdated(address indexed previousOperator, address indexed newOperator);
+    event HeldDonationRouted(bytes32 indexed sessionRef, address indexed org, uint256 gross, uint256 fee, uint256 net);
+
+    bytes32 internal constant SESSION_REF = keccak256("cos_test_123");
+
+    address internal operator;
+
+    /// @dev Simulates a Stripe settlement: USDC lands in the router's balance
+    ///      via a plain mint/transfer, with no calldata and no approvals.
+    function _settleToRouter(uint256 amount) internal {
+        token.mint(address(router), amount);
+    }
+
+    /// @dev Appoints `operator` (lazily created) and returns it, mirroring the
+    ///      runbook's post-deploy `setOperator` step.
+    function _appointOperator() internal returns (address) {
+        operator = makeAddr("operator");
+        router.setOperator(operator);
+        return operator;
+    }
+
+    // --- C1: operator appointment ----------------------------------------------
+
+    function test_SetOperator_RevertsForNonOwner() public {
+        address stranger = makeAddr("stranger");
+
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
+        vm.prank(stranger);
+        router.setOperator(stranger);
+    }
+
+    function test_SetOperator_SetsAndEmits() public {
+        address next = makeAddr("operator");
+
+        vm.expectEmit(true, true, false, true, address(router));
+        emit OperatorUpdated(address(0), next);
+        router.setOperator(next);
+
+        assertEq(router.operator(), next, "operator should be stored");
+    }
+
+    /// @notice Clearing the operator (zero address) is a deliberate kill switch:
+    ///         held routing halts until the owner appoints a new operator, while
+    ///         the owner itself can still route as fallback.
+    function test_SetOperator_CanClear() public {
+        address appointed = _appointOperator();
+
+        vm.expectEmit(true, true, false, true, address(router));
+        emit OperatorUpdated(appointed, address(0));
+        router.setOperator(address(0));
+
+        assertEq(router.operator(), address(0), "operator should be cleared");
+
+        _settleToRouter(DONATION);
+        vm.expectRevert(abi.encodeWithSelector(TransparentDonationRouter.NotOperator.selector, appointed));
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+    }
+
+    // --- C1: routeHeld happy path -----------------------------------------------
+
+    function test_RouteHeld_SplitsHeldBalance() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION);
+
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+
+        assertEq(token.balanceOf(treasury), EXPECTED_FEE, "treasury should receive the 1% fee");
+        assertEq(org.totalReceived(), EXPECTED_NET, "org should record the net via donate()");
+        assertEq(token.balanceOf(address(org)), EXPECTED_NET, "org should hold the net");
+        assertEq(token.balanceOf(address(router)), 0, "router should hold no USDC after routing");
+        assertEq(token.allowance(address(router), address(org)), 0, "no residual approval to org");
+    }
+
+    function test_RouteHeld_EmitsHeldDonationRouted() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION);
+
+        vm.expectEmit(true, true, false, true, address(router));
+        emit HeldDonationRouted(SESSION_REF, address(org), DONATION, EXPECTED_FEE, EXPECTED_NET);
+
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+    }
+
+    /// @notice The owner is always a valid routing fallback — if the operator key
+    ///         is lost, held settlements are delayed, never stranded.
+    function test_RouteHeld_OwnerCanRoute() public {
+        _settleToRouter(DONATION);
+
+        // No operator appointed; this test contract is the owner.
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+
+        assertEq(token.balanceOf(treasury), EXPECTED_FEE, "owner-routed fee should reach treasury");
+        assertEq(org.totalReceived(), EXPECTED_NET, "owner-routed net should reach org");
+    }
+
+    /// @notice Routing one session's gross must not touch USDC held for other,
+    ///         not-yet-routed settlements sharing the same contract balance.
+    function test_RouteHeld_LeavesOtherHeldFundsUntouched() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION); // session A
+        _settleToRouter(50e6); // session B, settled but not yet routed
+
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+
+        assertEq(token.balanceOf(address(router)), 50e6, "unrouted session's funds must remain held");
+    }
+
+    // --- C1: routeHeld guards ----------------------------------------------------
+
+    function test_RouteHeld_RevertsForUnauthorizedCaller() public {
+        _appointOperator();
+        _settleToRouter(DONATION);
+        address stranger = makeAddr("stranger");
+
+        vm.expectRevert(abi.encodeWithSelector(TransparentDonationRouter.NotOperator.selector, stranger));
+        vm.prank(stranger);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+    }
+
+    /// @notice A zero session ref can never mark the idempotency map — every
+    ///         routed settlement must be attributable to a real session.
+    function test_RouteHeld_RevertsOnZeroSessionRef() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION);
+
+        vm.expectRevert(TransparentDonationRouter.ZeroSessionRef.selector);
+        vm.prank(appointed);
+        router.routeHeld(bytes32(0), address(org), DONATION);
+    }
+
+    function test_RouteHeld_RevertsOnZeroOrg() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION);
+
+        vm.expectRevert(TransparentDonationRouter.ZeroAddress.selector);
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(0), DONATION);
+    }
+
+    function test_RouteHeld_RevertsWhenOrgNotAllowed() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION);
+        MockEndaomentOrg strangerOrg = new MockEndaomentOrg(token); // never allowlisted
+
+        vm.expectRevert(abi.encodeWithSelector(TransparentDonationRouter.OrgNotAllowed.selector, address(strangerOrg)));
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(strangerOrg), DONATION);
+    }
+
+    function test_RouteHeld_RevertsOnZeroAmount() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION);
+
+        vm.expectRevert(TransparentDonationRouter.ZeroAmount.selector);
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), 0);
+    }
+
+    /// @notice Routing more than the contract holds must revert BEFORE any token
+    ///         movement — a mis-keyed amount cannot spend other sessions' funds
+    ///         past the held balance.
+    function test_RouteHeld_RevertsWhenAmountExceedsHeld() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(TransparentDonationRouter.InsufficientHeldBalance.selector, DONATION + 1, DONATION)
+        );
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION + 1);
+    }
+
+    /// @notice Idempotency at the contract layer: even if the off-chain webhook
+    ///         dedup fails, the same session ref can never be routed twice.
+    function test_RouteHeld_RevertsOnReplayedSessionRef() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION * 2);
+
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+
+        vm.expectRevert(abi.encodeWithSelector(TransparentDonationRouter.SessionAlreadyRouted.selector, SESSION_REF));
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+
+        assertTrue(router.routedSessions(SESSION_REF), "session ref should be marked routed");
+    }
+
+    /// @notice A replayed session ref must surface `SessionAlreadyRouted` even
+    ///         when its amount ALSO exceeds the (now-reduced) held balance —
+    ///         otherwise a webhook double-fire reads as a funding problem
+    ///         instead of the replay it actually is (review L2).
+    function test_RouteHeld_ReplayBeatsInsufficientBalanceInRevertPriority() public {
+        address appointed = _appointOperator();
+        _settleToRouter(DONATION);
+
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+        // Held balance is now zero, so DONATION also fails the balance check.
+
+        vm.expectRevert(abi.encodeWithSelector(TransparentDonationRouter.SessionAlreadyRouted.selector, SESSION_REF));
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(org), DONATION);
+    }
+
+    /// @notice The reentrancy guard is shared across donate() and routeHeld(): a
+    ///         malicious org re-entering `router.donate()` from inside the
+    ///         routeHeld forwarding call reverts the whole routing tx.
+    function test_RouteHeld_NonReentrant() public {
+        address appointed = _appointOperator();
+        MockReentrantOrg attacker = new MockReentrantOrg(router);
+        router.setOrgAllowed(address(attacker), true);
+        _settleToRouter(DONATION);
+
+        vm.expectRevert(ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        vm.prank(appointed);
+        router.routeHeld(SESSION_REF, address(attacker), DONATION);
+    }
 }
