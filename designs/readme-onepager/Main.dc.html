@@ -1,0 +1,321 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&amp;family=Inter:wght@300;400;500&amp;display=swap">
+  <style>
+    body {
+      margin: 0;
+      background: #ffffff;
+      color: #0d253d;
+      font-family: "Inter", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+      font-weight: 300;
+      font-feature-settings: "ss01";
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: #533afd; text-decoration: none; }
+    a:hover { color: #4434d4; }
+    .tnum { font-feature-settings: "ss01", "tnum"; }
+  </style>
+</helmet>
+
+<div style="width: 100%; background: #ffffff;">
+
+  <!-- ============ HERO with gradient mesh ============ -->
+  <div style="position: relative; overflow: hidden; background: #ffffff;">
+    <svg style="position: absolute; top: -140px; left: 50%; transform: translateX(-50%); width: 1720px; height: 560px; pointer-events: none;" viewBox="0 0 1720 560" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <filter id="euda-mesh-blur" x="-40%" y="-40%" width="180%" height="180%">
+          <feGaussianBlur stdDeviation="72"></feGaussianBlur>
+        </filter>
+      </defs>
+      <g filter="url(#euda-mesh-blur)">
+        <ellipse cx="180" cy="200" rx="380" ry="200" fill="#f5e9d4"></ellipse>
+        <ellipse cx="560" cy="140" rx="320" ry="170" fill="#9b6829" opacity="0.30"></ellipse>
+        <ellipse cx="880" cy="220" rx="330" ry="180" fill="#b9b9f9" opacity="0.85"></ellipse>
+        <ellipse cx="1180" cy="120" rx="300" ry="170" fill="#533afd" opacity="0.50"></ellipse>
+        <ellipse cx="1420" cy="240" rx="300" ry="170" fill="#ea2261" opacity="0.38"></ellipse>
+        <ellipse cx="1620" cy="120" rx="240" ry="150" fill="#f96bee" opacity="0.35"></ellipse>
+      </g>
+    </svg>
+    <div style="position: absolute; left: 0; right: 0; top: 240px; height: 200px; background: linear-gradient(180deg, rgba(255,255,255,0) 0%, #ffffff 100%); pointer-events: none;"></div>
+
+    <div style="position: relative; max-width: 880px; margin: 0 auto; padding: 88px 32px 40px 32px;">
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; color: #273951;">Project README</span>
+          <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; font-weight: 400; color: #56627a;">github.com/mnkprs/Philotimo</span>
+        </div>
+        <h1 style="margin: 0; font-size: 56px; font-weight: 300; line-height: 1.03; letter-spacing: -1.4px; color: #0d253d;">Eudaimonia</h1>
+        <p style="margin: 0; max-width: 640px; font-size: 16px; font-weight: 300; line-height: 1.5; color: #273951;">A transparent, consumer-facing donation platform on Base L2. Donors pay with a credit card; the money is converted to USDC on-chain, routed through an auditable smart contract, and delivered to vetted charities via Endaoment. Every gift produces a public, verifiable receipt that traces the money from donor to charity.</p>
+        <p style="margin: 0; font-size: 15px; font-weight: 300; font-style: italic; line-height: 1.4; color: #56627a;">From the Greek φιλότιμο (philotimo): the sense of duty to do right by others.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px;">
+          <span style="background: #b9b9f9; color: #4434d4; font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; padding: 4px 8px; border-radius: 9999px;">Base L2</span>
+          <span style="background: #b9b9f9; color: #4434d4; font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; padding: 4px 8px; border-radius: 9999px;">USDC</span>
+          <span style="background: #b9b9f9; color: #4434d4; font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; padding: 4px 8px; border-radius: 9999px;">Endaoment</span>
+          <span class="tnum" style="background: #b9b9f9; color: #4434d4; font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; padding: 4px 8px; border-radius: 9999px;">1% fee — hardcoded</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <div style="max-width: 880px; margin: 0 auto; padding: 48px 32px 24px 32px;">
+    <h2 style="margin: 0 0 24px 0; font-size: 26px; font-weight: 300; line-height: 1.12; letter-spacing: -0.26px; color: #0d253d;">How it works</h2>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px;">
+
+      <!-- Timeline -->
+      <div style="display: flex; flex-direction: column; gap: 0;">
+
+        <div style="display: flex; gap: 16px;">
+          <div style="display: flex; flex-direction: column; align-items: center; width: 20px;">
+            <div style="width: 10px; height: 10px; border-radius: 9999px; background: #533afd; margin-top: 5px;"></div>
+            <div style="width: 1px; flex-grow: 1; background: #e3e8ee;"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 20px;">
+            <div style="font-size: 15px; font-weight: 400; color: #0d253d;">Select</div>
+            <div style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;">The donor picks a curated, urgent cause on the landing page.</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px;">
+          <div style="display: flex; flex-direction: column; align-items: center; width: 20px;">
+            <div style="width: 10px; height: 10px; border-radius: 9999px; background: #533afd; margin-top: 5px;"></div>
+            <div style="width: 1px; flex-grow: 1; background: #e3e8ee;"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 20px;">
+            <div style="font-size: 15px; font-weight: 400; color: #0d253d;">Pay</div>
+            <div style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;">Card or Apple Pay at <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 4px; padding: 1px 5px;">/donate/[campaignId]</span> — no wallet, no crypto knowledge required.</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px;">
+          <div style="display: flex; flex-direction: column; align-items: center; width: 20px;">
+            <div style="width: 10px; height: 10px; border-radius: 9999px; background: #533afd; margin-top: 5px;"></div>
+            <div style="width: 1px; flex-grow: 1; background: #e3e8ee;"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 20px;">
+            <div style="font-size: 15px; font-weight: 400; color: #0d253d;">On-ramp</div>
+            <div style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;">Stripe Crypto Onramp converts the fiat to USDC on Base; <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 4px; padding: 1px 5px;">/processing/[sessionId]</span> tracks settlement.</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px;">
+          <div style="display: flex; flex-direction: column; align-items: center; width: 20px;">
+            <div style="width: 10px; height: 10px; border-radius: 9999px; background: #533afd; margin-top: 5px;"></div>
+            <div style="width: 1px; flex-grow: 1; background: #e3e8ee;"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 20px;">
+            <div style="font-size: 15px; font-weight: 400; color: #0d253d;">Route</div>
+            <div class="tnum" style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;">The TransparentDonationRouter pulls the USDC, skims the hardcoded 1% platform fee to the treasury, and forwards 99% to the charity's Endaoment org Entity.</div>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 16px;">
+          <div style="display: flex; flex-direction: column; align-items: center; width: 20px;">
+            <div style="width: 10px; height: 10px; border-radius: 9999px; background: #533afd; margin-top: 5px; box-shadow: 0 0 0 3px rgba(83, 58, 253, 0.15);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-size: 15px; font-weight: 400; color: #0d253d;">Prove</div>
+            <div style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;"><span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 4px; padding: 1px 5px;">/receipt/[txid]</span> decodes the on-chain DonationRouted event into a visual timeline with real transaction IDs.</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Money split card -->
+      <div style="display: flex; flex-direction: column; gap: 16px; background: #ffffff; border: 1px solid #e3e8ee; border-radius: 12px; padding: 32px; box-shadow: rgba(0,55,112,0.08) 0 1px 3px; align-self: start;">
+        <div style="font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; color: #56627a;">Where the money goes</div>
+        <div class="tnum" style="font-size: 26px; font-weight: 300; letter-spacing: -0.26px; color: #0d253d;">For every $100.00 donated</div>
+        <div style="display: flex; width: 100%; height: 12px; border-radius: 9999px; overflow: hidden;">
+          <div style="flex-grow: 1; background: #533afd;"></div>
+          <div style="width: 1%; min-width: 10px; flex-shrink: 0; background: #1c1e54;"></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="display: flex; gap: 10px; align-items: baseline;">
+            <div style="width: 8px; height: 8px; border-radius: 9999px; background: #533afd; align-self: center;"></div>
+            <div class="tnum" style="font-size: 15px; font-weight: 400; letter-spacing: -0.42px; color: #0d253d; min-width: 56px;">$99.00</div>
+            <div style="font-size: 14px; font-weight: 300; line-height: 1.4; color: #273951;">forwarded directly to the charity's Endaoment org Entity</div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: baseline;">
+            <div style="width: 8px; height: 8px; border-radius: 9999px; background: #1c1e54; align-self: center;"></div>
+            <div class="tnum" style="font-size: 15px; font-weight: 400; letter-spacing: -0.42px; color: #0d253d; min-width: 56px;">$1.00</div>
+            <div class="tnum" style="font-size: 14px; font-weight: 300; line-height: 1.4; color: #273951;">platform fee to the treasury — FEE_BPS = 100, a compile-time constant</div>
+          </div>
+        </div>
+        <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; line-height: 1.4; color: #56627a; border-top: 1px solid #e3e8ee; padding-top: 12px;">Fiat in, USDC out: Stripe Crypto Onramp → TransparentDonationRouter → Endaoment → charity.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ TRUST MODEL (tint band) ============ -->
+  <div style="background: #f6f9fc; margin-top: 32px;">
+    <div style="max-width: 880px; margin: 0 auto; padding: 48px 32px;">
+      <h2 style="margin: 0 0 8px 0; font-size: 26px; font-weight: 300; line-height: 1.12; letter-spacing: -0.26px; color: #0d253d;">Trust model</h2>
+      <p style="margin: 0 0 24px 0; font-size: 15px; font-weight: 300; line-height: 1.4; color: #273951; max-width: 620px;">The routing contract is deliberately small and rigid — the guarantees live in the bytecode, not in policy.</p>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+
+        <div style="display: flex; flex-direction: column; gap: 8px; background: #ffffff; border: 1px solid #e3e8ee; border-radius: 12px; padding: 24px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect x="4" y="9" width="12" height="8" rx="1.5" stroke="#533afd" stroke-width="1.5"></rect><path d="M7 9V6.5C7 4.84315 8.34315 3.5 10 3.5C11.6569 3.5 13 4.84315 13 6.5V9" stroke="#533afd" stroke-width="1.5"></path></svg>
+          <div class="tnum" style="font-size: 15px; font-weight: 400; color: #0d253d;">The fee is hardcoded</div>
+          <div class="tnum" style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;">FEE_BPS = 100 (1%) is a compile-time constant. No owner can raise it.</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; background: #ffffff; border: 1px solid #e3e8ee; border-radius: 12px; padding: 24px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="10" cy="6" r="2.5" stroke="#533afd" stroke-width="1.5"></circle><path d="M10 8.5V16.5" stroke="#533afd" stroke-width="1.5"></path><path d="M5 13C5 14.933 7.23858 16.5 10 16.5C12.7614 16.5 15 14.933 15 13" stroke="#533afd" stroke-width="1.5"></path><path d="M3.5 10.5H6.5" stroke="#533afd" stroke-width="1.5"></path><path d="M13.5 10.5H16.5" stroke="#533afd" stroke-width="1.5"></path></svg>
+          <div style="font-size: 15px; font-weight: 400; color: #0d253d;">USDC and treasury are immutable</div>
+          <div style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;">Set once at deploy, validated against the zero address, unchangeable afterward.</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; background: #ffffff; border: 1px solid #e3e8ee; border-radius: 12px; padding: 24px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M4 5.5H16" stroke="#533afd" stroke-width="1.5" stroke-linecap="round"></path><path d="M4 10H16" stroke="#533afd" stroke-width="1.5" stroke-linecap="round"></path><path d="M4 14.5H10" stroke="#533afd" stroke-width="1.5" stroke-linecap="round"></path><path d="M12.5 14.5L14 16L16.5 13" stroke="#533afd" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <div style="font-size: 15px; font-weight: 400; color: #0d253d;">Destinations are allowlisted</div>
+          <div style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;"><span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 4px; padding: 1px 5px;">donate</span> only forwards to owner-vetted Endaoment entities, so a valid DonationRouted log can never point at an attacker-controlled address. The owner key must be a multisig in production.</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; background: #ffffff; border: 1px solid #e3e8ee; border-radius: 12px; padding: 24px;">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M10 3L16 5.5V9.5C16 13.0899 13.5 15.5 10 17C6.5 15.5 4 13.0899 4 9.5V5.5L10 3Z" stroke="#533afd" stroke-width="1.5" stroke-linejoin="round"></path><path d="M7.5 10L9.5 12L13 8.5" stroke="#533afd" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          <div style="font-size: 15px; font-weight: 400; color: #0d253d;">Guarded transfer path</div>
+          <div style="font-size: 14px; font-weight: 300; line-height: 1.45; color: #273951;">Checks-effects-interactions plus ReentrancyGuard on the donation path, with OpenZeppelin SafeERC20 for transfers.</div>
+        </div>
+
+      </div>
+
+      <!-- Contract mockup panel -->
+      <div style="margin-top: 24px; background: #1c1e54; border-radius: 12px; padding: 24px; box-shadow: rgba(0,55,112,0.08) 0 8px 24px, rgba(0,55,112,0.04) 0 2px 6px;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+          <div style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; font-weight: 400; color: #a8c3de;">contracts/src/TransparentDonationRouter.sol</div>
+        </div>
+        <pre class="tnum" style="margin: 0; font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; line-height: 1.75; color: #ffffff; white-space: pre; overflow-x: auto;"><span style="color: #a8c3de;">/// Solidity 0.8.24 · Foundry · OpenZeppelin</span>
+uint256  <span style="color: #665efd;">public constant</span>  FEE_BPS = 100;        <span style="color: #a8c3de;">// 1%, no owner can change it</span>
+IERC20   <span style="color: #665efd;">public immutable</span> usdc;                 <span style="color: #a8c3de;">// fixed at deploy</span>
+address  <span style="color: #665efd;">public immutable</span> treasury;             <span style="color: #a8c3de;">// fixed at deploy</span>
+mapping(address =&gt; bool) <span style="color: #665efd;">public</span> allowedOrgs;   <span style="color: #a8c3de;">// owner-vetted Endaoment entities</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TECH STACK ============ -->
+  <div style="max-width: 880px; margin: 0 auto; padding: 48px 32px 24px 32px;">
+    <h2 style="margin: 0 0 20px 0; font-size: 26px; font-weight: 300; line-height: 1.12; letter-spacing: -0.26px; color: #0d253d;">Tech stack</h2>
+    <div style="border: 1px solid #e3e8ee; border-radius: 12px; overflow: hidden;">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 14px 24px; border-bottom: 1px solid #e3e8ee;">
+        <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; color: #56627a;">Frontend</div>
+        <div class="tnum" style="font-size: 14px; font-weight: 300; color: #0d253d;">Next.js 16 (App Router), React 19, Tailwind CSS 4, shadcn/ui</div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 14px 24px; border-bottom: 1px solid #e3e8ee;">
+        <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; color: #56627a;">Web3 reads</div>
+        <div style="font-size: 14px; font-weight: 300; color: #0d253d;">viem + wagmi — receipt decoding, contract event reads</div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 14px 24px; border-bottom: 1px solid #e3e8ee;">
+        <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; color: #56627a;">Payments</div>
+        <div style="font-size: 14px; font-weight: 300; color: #0d253d;">Stripe Crypto Onramp (fiat → USDC on Base)</div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 14px 24px; border-bottom: 1px solid #e3e8ee;">
+        <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; color: #56627a;">State / session</div>
+        <div style="font-size: 14px; font-weight: 300; color: #0d253d;">Vercel KV (Upstash Redis) with an in-memory fallback for dev</div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 14px 24px; border-bottom: 1px solid #e3e8ee;">
+        <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; color: #56627a;">Contracts</div>
+        <div class="tnum" style="font-size: 14px; font-weight: 300; color: #0d253d;">Solidity 0.8.24, Foundry, OpenZeppelin</div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 14px 24px; border-bottom: 1px solid #e3e8ee;">
+        <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; color: #56627a;">Network</div>
+        <div style="font-size: 14px; font-weight: 300; color: #0d253d;">Base mainnet / Base Sepolia — never Ethereum L1</div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; padding: 14px 24px;">
+        <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; color: #56627a;">Observability</div>
+        <div style="font-size: 14px; font-weight: 300; color: #0d253d;">Sentry, Pino, Vercel Analytics</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ REPO LAYOUT (cream interlude) ============ -->
+  <div style="max-width: 880px; margin: 0 auto; padding: 24px 32px;">
+    <div style="background: #f5e9d4; border-radius: 12px; padding: 32px;">
+      <h2 style="margin: 0 0 16px 0; font-size: 26px; font-weight: 300; line-height: 1.12; letter-spacing: -0.26px; color: #0d253d;">Repository layout</h2>
+      <pre style="margin: 0; font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; line-height: 1.8; color: #0d253d; white-space: pre; overflow-x: auto;">src/          Next.js app — routes, components, domain logic (onramp state
+              machine, receipt decoding, campaigns, KV stores, rate limiting)
+contracts/    Foundry project — src/TransparentDonationRouter.sol, unit +
+              fuzz tests, fork tests (test/fork/), Deploy.s.sol, DEPLOY.md
+docs/         RUNBOOK.md (ops), DEPLOY-VERCEL.md, ADRs
+prompts/      Persisted epic plans and operator action logs
+e2e/          Playwright end-to-end tests</pre>
+    </div>
+  </div>
+
+  <!-- ============ GETTING STARTED ============ -->
+  <div style="max-width: 880px; margin: 0 auto; padding: 24px 32px;">
+    <h2 style="margin: 0 0 8px 0; font-size: 26px; font-weight: 300; line-height: 1.12; letter-spacing: -0.26px; color: #0d253d;">Getting started</h2>
+    <p style="margin: 0 0 20px 0; font-size: 15px; font-weight: 300; line-height: 1.4; color: #273951;">Prerequisites: Node.js 20+, npm, and Foundry for contract work.</p>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+
+      <div style="background: #1c1e54; border-radius: 12px; padding: 24px; box-shadow: rgba(0,55,112,0.08) 0 8px 24px, rgba(0,55,112,0.04) 0 2px 6px;">
+        <div style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; font-weight: 400; color: #a8c3de; margin-bottom: 14px;">App — Next.js</div>
+        <pre style="margin: 0; font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; line-height: 1.9; color: #ffffff; white-space: pre; overflow-x: auto;"><span style="color: #665efd;">$</span> git clone https://github.com/mnkprs/Philotimo
+<span style="color: #665efd;">$</span> npm ci
+<span style="color: #665efd;">$</span> cp .env.local.example .env.local
+<span style="color: #a8c3de;">  # Stripe keys, KV, RPC URLs, addresses</span>
+<span style="color: #665efd;">$</span> npm run dev</pre>
+      </div>
+
+      <div style="background: #1c1e54; border-radius: 12px; padding: 24px; box-shadow: rgba(0,55,112,0.08) 0 8px 24px, rgba(0,55,112,0.04) 0 2px 6px;">
+        <div style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; font-weight: 400; color: #a8c3de; margin-bottom: 14px;">Contracts — Foundry</div>
+        <pre style="margin: 0; font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; line-height: 1.9; color: #ffffff; white-space: pre; overflow-x: auto;"><span style="color: #665efd;">$</span> cd contracts
+<span style="color: #a8c3de;">  # vendor forge-std + openzeppelin → lib/</span>
+<span style="color: #665efd;">$</span> forge build
+<span style="color: #665efd;">$</span> forge test
+<span style="color: #a8c3de;">  # fork tests self-skip without BASE_RPC_URL</span></pre>
+      </div>
+
+    </div>
+
+    <p style="margin: 16px 0 0 0; font-size: 14px; font-weight: 300; line-height: 1.5; color: #273951;">Defaults target Base Sepolia; public RPC endpoints work for development. Deployment to Base Sepolia or mainnet is an operator action — see <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 4px; padding: 1px 5px;">contracts/DEPLOY.md</span>.</p>
+  </div>
+
+  <!-- ============ TESTING ============ -->
+  <div style="max-width: 880px; margin: 0 auto; padding: 24px 32px 48px 32px;">
+    <h2 style="margin: 0 0 8px 0; font-size: 26px; font-weight: 300; line-height: 1.12; letter-spacing: -0.26px; color: #0d253d;">Testing</h2>
+    <p class="tnum" style="margin: 0 0 20px 0; font-size: 15px; font-weight: 300; line-height: 1.4; color: #273951;">Developed test-first (TDD) with an 80% coverage floor. CI runs two independent jobs on every PR — the frontend pipeline and the contracts pipeline.</p>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+      <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; color: #0d253d; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 9999px; padding: 6px 14px;">npm test</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; color: #0d253d; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 9999px; padding: 6px 14px;">npm run test:coverage</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; color: #0d253d; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 9999px; padding: 6px 14px;">npm run test:e2e</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; color: #0d253d; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 9999px; padding: 6px 14px;">npm run test:a11y:lighthouse</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; color: #0d253d; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 9999px; padding: 6px 14px;">forge test</span>
+      <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; font-weight: 400; color: #0d253d; background: #f6f9fc; border: 1px solid #e3e8ee; border-radius: 9999px; padding: 6px 14px;">npx tsc --noEmit</span>
+    </div>
+  </div>
+
+  <!-- ============ FOOTER ============ -->
+  <div style="border-top: 1px solid #e3e8ee;">
+    <div style="max-width: 880px; margin: 0 auto; padding: 32px 32px 56px 32px; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
+        <span style="font-size: 10px; font-weight: 400; letter-spacing: 0.1px; text-transform: uppercase; color: #56627a;">Key documents</span>
+        <span style="font-family: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace; font-size: 11px; font-weight: 400; color: #273951;">PRODUCT.md · ARCHITECTURE.md · DESIGN.md · SECURITY.md · docs/RUNBOOK.md · contracts/DEPLOY.md</span>
+      </div>
+      <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; line-height: 1.5; color: #56627a;">MVP in active development, built in planned epics: landing page, checkout, fiat on-ramp, the router contract, Endaoment integration, and the receipt page. Private project — not yet accepting external contributions.</div>
+      <div style="font-size: 13px; font-weight: 400; letter-spacing: -0.39px; color: #56627a;"><a href="https://github.com/mnkprs/Philotimo">github.com/mnkprs/Philotimo</a></div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
