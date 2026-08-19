@@ -24,6 +24,15 @@ export const serverEnvSchema = z.object({
       EVM_ADDRESS,
       "ROUTER_ADDRESS_BASE_SEPOLIA must match 0x[a-fA-F0-9]{40}",
     ),
+  /**
+   * Base MAINNET router address. Optional until the mainnet deployment ships
+   * (runbook step 6): while absent, mainnet session creation refuses rather
+   * than routing to a non-existent contract.
+   */
+  ROUTER_ADDRESS_BASE: z
+    .string()
+    .regex(EVM_ADDRESS, "ROUTER_ADDRESS_BASE must match 0x[a-fA-F0-9]{40}")
+    .optional(),
   USDC_CONTRACT_BASE_SEPOLIA: z
     .string()
     .regex(

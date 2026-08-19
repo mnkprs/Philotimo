@@ -50,6 +50,7 @@ contract RouterForkTest is Test {
     address internal endaomentOrg;
     address internal treasury;
     address internal donor;
+    address internal operator;
 
     /// @dev True only when both env inputs are present and the fork is live.
     ///      Tests short-circuit to `vm.skip` otherwise.
@@ -70,10 +71,13 @@ contract RouterForkTest is Test {
         usdc = IERC20(BASE_USDC);
         treasury = makeAddr("treasury");
         donor = makeAddr("donor");
+        operator = makeAddr("operator");
         // This test contract is the allowlist owner (H1); allowlist the real org
-        // so the gated donate() forwards on the fork instead of reverting.
+        // so the gated donate() forwards on the fork instead of reverting, and
+        // appoint the routing operator (C1) as the runbook's post-deploy step does.
         router = new TransparentDonationRouter(BASE_USDC, treasury, address(this));
         router.setOrgAllowed(endaomentOrg, true);
+        router.setOperator(operator);
         forkReady = true;
     }
 
@@ -137,5 +141,58 @@ contract RouterForkTest is Test {
         assertEq(
             usdc.allowance(address(router), endaomentOrg), 0, "router should leave no residual allowance to the org"
         );
+    }
+
+    /// @notice The fiat on-ramp path (C1) end-to-end on a real Base fork: Stripe
+    ///         settles real USDC into the router with a PLAIN transfer (no
+    ///         calldata — simulated by `deal`ing the router's balance), then the
+    ///         operator triggers `routeHeld` and the held gross splits 1% to our
+    ///         treasury / 99% into the real org via Endaoment's own `donate()`,
+    ///         leaving the router empty and the session ref consumed.
+    function testFork_RouteHeld_RealUsdc_RealOrg() public {
+        if (!forkReady) {
+            vm.skip(true, "BASE_RPC_URL / ENDAOMENT_ORG unset (Epic-5 gated)");
+            return;
+        }
+
+        bytes32 sessionRef = keccak256("cos_fork_smoke");
+        (uint256 expectedFee, uint256 expectedNet) = router.previewSplit(DONATION);
+
+        IEndaomentRegistry registry = IEndaomentEntityView(endaomentOrg).registry();
+        uint256 feeZoc = registry.getDonationFeeWithOverrides(endaomentOrg);
+        address endaomentTreasury = registry.treasury();
+        uint256 expectedEndaomentFee = (expectedNet * feeZoc) / ENDAOMENT_ZOC;
+        uint256 expectedOrgCredit = expectedNet - expectedEndaomentFee;
+
+        // Stripe's settlement is a plain ERC-20 transfer to the router address:
+        // no approvals, no calldata. `deal` reproduces exactly that end state.
+        deal(BASE_USDC, address(router), DONATION);
+
+        uint256 treasuryBefore = usdc.balanceOf(treasury);
+        uint256 orgBefore = usdc.balanceOf(endaomentOrg);
+        uint256 endaomentTreasuryBefore = usdc.balanceOf(endaomentTreasury);
+
+        vm.prank(operator);
+        router.routeHeld(sessionRef, endaomentOrg, DONATION);
+
+        assertEq(
+            usdc.balanceOf(treasury) - treasuryBefore, expectedFee, "treasury should receive the 1% fee in real USDC"
+        );
+        uint256 orgDelta = usdc.balanceOf(endaomentOrg) - orgBefore;
+        assertEq(
+            orgDelta,
+            expectedOrgCredit,
+            "org should be credited the forwarded net minus Endaoment's registry donation fee"
+        );
+        assertEq(
+            usdc.balanceOf(endaomentTreasury) - endaomentTreasuryBefore,
+            expectedEndaomentFee,
+            "Endaoment's treasury should receive its registry donation fee"
+        );
+        assertEq(usdc.balanceOf(address(router)), 0, "router should retain no USDC after routing the held gross");
+        assertEq(
+            usdc.allowance(address(router), endaomentOrg), 0, "router should leave no residual allowance to the org"
+        );
+        assertTrue(router.routedSessions(sessionRef), "session ref should be consumed");
     }
 }

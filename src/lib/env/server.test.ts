@@ -85,4 +85,29 @@ describe("loadServerEnv()", () => {
     const env = loadServerEnv({ ...VALID_ENV, NEXT_PUBLIC_CHAIN: "base" });
     expect(env.NEXT_PUBLIC_CHAIN).toBe("base");
   });
+
+  it("accepts an absent ROUTER_ADDRESS_BASE (mainnet router not deployed yet)", () => {
+    const env = loadServerEnv(VALID_ENV);
+    expect(env.ROUTER_ADDRESS_BASE).toBeUndefined();
+  });
+
+  it("parses a valid ROUTER_ADDRESS_BASE when provided", () => {
+    const env = loadServerEnv({
+      ...VALID_ENV,
+      ROUTER_ADDRESS_BASE: "0xAbCdEf1234567890aBcDeF1234567890AbCdEf12",
+    });
+    expect(env.ROUTER_ADDRESS_BASE).toBe(
+      "0xAbCdEf1234567890aBcDeF1234567890AbCdEf12",
+    );
+  });
+
+  it("rejects ROUTER_ADDRESS_BASE that is not a 0x-prefixed 40-hex address", () => {
+    expect(() =>
+      loadServerEnv({ ...VALID_ENV, ROUTER_ADDRESS_BASE: "not-an-addr" }),
+    ).toThrow(/ROUTER_ADDRESS_BASE/);
+
+    expect(() =>
+      loadServerEnv({ ...VALID_ENV, ROUTER_ADDRESS_BASE: "0x123" }),
+    ).toThrow(/ROUTER_ADDRESS_BASE/);
+  });
 });

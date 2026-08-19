@@ -6,19 +6,31 @@
 > **operator action**: outward-facing, irreversible, or requiring funded keys —
 > deliberately not automated.
 >
-> **Code status:** everything automatable is done and verified —
-> forge 29 passed / fork test **run green on a live Base mainnet fork** (PR #52),
-> vitest green, Stripe onramp + webhook + KV session store shipped (PR #25).
+> **Code status (updated 2026-08-19, post adversarial review):** everything
+> automatable is done and verified — forge 44 passed (incl. the new
+> `routeHeld` held-settlement routing, review C1), both fork tests
+> (`donate` + `routeHeld`) **run green on a live Base mainnet fork
+> 2026-08-19**, vitest 946 green, Stripe onramp + webhook + KV session store
+> shipped (PR #25). Mainnet env path (`ROUTER_ADDRESS_BASE`) is now actually
+> read by the session builder (review F2), and
+> `test/fork/DeployedRouterFork.t.sol` provides a real post-deployment proof
+> (review F3).
+>
+> **Known gap (tracked follow-up):** the settled-webhook → `routeHeld` trigger
+> is NOT automated yet. Until a backend relayer job ships, routing each
+> settled on-ramp session is a **manual operator action** (step 5.4 below).
+> Funds are never strandable — `routeHeld` is callable by the operator or the
+> owner at any time — but they sit held in the router until routed.
 
 ## What's left, in order
 
 ```
-1. Deploy router → Base Sepolia          (needs funded Sepolia key + Basescan key)
-2. Allowlist orgs on the router          (owner account; donations revert until done)
-3. Wire env into Vercel + local          (both server + NEXT_PUBLIC vars)
-4. Register Stripe onramp webhook        (Stripe dashboard)
-5. Live sandbox card payment             (closes Epic 3 acceptance)
-6. Mainnet deploy (repeat 1–3 on Base)   (multisig owner; closes Epic 4)
+1. Deploy router → Base Sepolia            (needs funded Sepolia key + Basescan key)
+2. Allowlist orgs + appoint operator       (owner account; donations revert until done)
+3. Wire env into Vercel + local            (both server + NEXT_PUBLIC vars)
+4. Register Stripe onramp webhook          (Stripe dashboard)
+5. Live sandbox card payment + routeHeld   (closes Epic 3 acceptance)
+6. Mainnet deploy (repeat 1–3 on Base)     (multisig owner; closes Epic 4)
 ```
 
 ---
@@ -59,14 +71,29 @@ forge script script/Deploy.s.sol:Deploy \
 
 Record the logged `TransparentDonationRouter deployed at: 0x…`.
 
-## 2. Allowlist the orgs (donations revert with `OrgNotAllowed` until done)
+## 2. Allowlist the orgs + appoint the routing operator
 
-From the `OWNER_ADDRESS` account, per org:
+Donations revert with `OrgNotAllowed` until the orgs are allowlisted. From the
+`OWNER_ADDRESS` account, per org:
 
 ```sh
 cast send <router> "setOrgAllowed(address,bool)" <org> true \
   --rpc-url $BASE_SEPOLIA_RPC_URL --account <owner-keystore>
 ```
+
+Then appoint the routing operator (review C1: Stripe settles USDC into the
+router with a plain transfer, and `routeHeld` — operator- or owner-only —
+performs the 1/99 split on that held balance):
+
+```sh
+cast send <router> "setOperator(address)" <operator> \
+  --rpc-url $BASE_SEPOLIA_RPC_URL --account <owner-keystore>
+```
+
+The operator key never custodies funds; it only triggers routing toward
+allowlisted orgs, and every session ref is consumed exactly once on-chain. The
+owner is always a fallback caller, so a lost operator key delays routing but
+cannot strand funds.
 
 Base **Sepolia** org entities were wired in PR #38 (fetched from the dev API
 via `scripts/fetch-endaoment-orgs.mjs`) — cross-check the values in the repo
@@ -104,6 +131,11 @@ ROUTER_ADDRESS_BASE=0x<deployed>
 NEXT_PUBLIC_ROUTER_ADDRESS_BASE=0x<deployed>
 ```
 
+Fixed 2026-08-19 (review F2): `ROUTER_ADDRESS_BASE` was previously documented
+but not read by any code — mainnet sessions were unconditionally rejected. The
+session builder is now chain-aware: with `NEXT_PUBLIC_CHAIN=base` it settles to
+`ROUTER_ADDRESS_BASE` and refuses only while that var is unset.
+
 ## 4. Register the Stripe webhook (missing prerequisite added 2026-05-23)
 
 In the Stripe dashboard (test mode), add a webhook endpoint for
@@ -116,11 +148,28 @@ verification 400s every event.
 
 1. `npm run dev` (or the Vercel preview) with all env above set.
 2. Visit `/donate/pcrf`, donate $50 with a Stripe test card.
-3. Confirm: redirect to Stripe-hosted onramp → USDC arrives at the **router**
-   on Base Sepolia → webhook flips the session to `settled` →
-   `/api/onramp/status/<sessionId>` returns the tx hash → receipt page renders
-   the stages.
-4. Check the 1/99 split on Sepolia Basescan (treasury delta = 1%).
+3. Confirm settlement: redirect to Stripe-hosted onramp → USDC arrives at the
+   **router** on Base Sepolia as a plain transfer (it stays **held** — no
+   split happens yet) → webhook flips the session to `settled` →
+   `/api/onramp/status/<sessionId>` returns the tx hash.
+4. **Route the held settlement** (manual operator action until the automated
+   trigger ships). `sessionRef` is `keccak256` of the Stripe session id;
+   `amount` is the gross in 6-decimal USDC units ($50 → `50000000`):
+   ```sh
+   cast send <router> "routeHeld(bytes32,address,uint256)" \
+     $(cast keccak "<sessionId>") <org> 50000000 \
+     --rpc-url $BASE_SEPOLIA_RPC_URL --account <operator-keystore>
+   ```
+   ⚠️ **Verify org + amount against the Stripe session before every send, and
+   route one session at a time.** The contract can only bound `amount` at its
+   POOLED balance, not per session (review S1): with several unrouted
+   settlements held, an inflated or mis-keyed amount would spend other
+   sessions' funds, and the session ref is consumed permanently — there is no
+   on-chain undo. A per-session commitment design ships with the relayer epic
+   (ADR 0002 amendment).
+5. Check the 1/99 split on the `routeHeld` tx on Sepolia Basescan: treasury
+   delta = 1%, `HeldDonationRouted(sessionRef, org, gross, fee, net)` emitted,
+   router balance back to zero.
 
 → Close **#4**.
 
@@ -128,12 +177,22 @@ verification 400s every event.
 
 Repeat steps 1–3 with `--rpc-url base`, `USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`,
 the **Safe multisig as OWNER_ADDRESS**, and triple-check `TREASURY_ADDRESS` —
-it is immutable. Allowlist the mainnet org entities (step 2 list). Then set the
-two mainnet env vars (step 3).
+it is immutable. Allowlist the mainnet org entities (step 2 list), appoint the
+mainnet operator (step 2), then set the two mainnet env vars (step 3).
 
-Optional final proof: re-run the fork suite pinned at the deployed state —
-`BASE_RPC_URL=<rpc> ENDAOMENT_ORG=0xf0e8…637b forge test --match-path 'test/fork/*'`
-(green as of 2026-08-19).
+Final proof — verify the DEPLOYED state (review F3: the fresh-contract fork
+suite proves the code, not the deployment; only this attached suite catches a
+wrong immutable, wrong owner, or missing allowlist entry):
+
+```sh
+BASE_RPC_URL=<rpc> ROUTER_ADDRESS=0x<deployed> ENDAOMENT_ORG=0xf0e8…637b \
+EXPECTED_TREASURY=0x<treasury> EXPECTED_OWNER=0x<safe> FORK_BLOCK=<block> \
+forge test --match-path 'test/fork/DeployedRouterFork.t.sol'
+```
+
+It asserts the deployed immutables (USDC, treasury), owner, hardcoded 1% fee,
+and the org allowlist entry, then smoke-runs `donate()` and `routeHeld()`
+against the real Endaoment org on a fork pinned at `FORK_BLOCK`.
 
 → Close **#5**.
 

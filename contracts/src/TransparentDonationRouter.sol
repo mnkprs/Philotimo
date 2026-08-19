@@ -34,6 +34,26 @@ contract TransparentDonationRouter is ReentrancyGuard, Ownable {
     /// @param org The rejected, un-vetted org address.
     error OrgNotAllowed(address org);
 
+    /// @notice Thrown when `routeHeld` is called by anyone other than the
+    ///         operator or the owner.
+    /// @param caller The unauthorized caller.
+    error NotOperator(address caller);
+
+    /// @notice Thrown when `routeHeld` is asked to route more than the contract
+    ///         currently holds.
+    /// @param requested Gross amount the caller tried to route.
+    /// @param held USDC actually held by the router.
+    error InsufficientHeldBalance(uint256 requested, uint256 held);
+
+    /// @notice Thrown when `routeHeld` is replayed with a session ref that has
+    ///         already been routed.
+    /// @param sessionRef The already-consumed session reference.
+    error SessionAlreadyRouted(bytes32 sessionRef);
+
+    /// @notice Thrown when `routeHeld` is called with the zero session ref,
+    ///         which could never attribute a routing to a real session.
+    error ZeroSessionRef();
+
     /// @notice USDC token the router pulls from donors. Set once at deploy.
     IERC20 public immutable usdc;
 
@@ -43,6 +63,17 @@ contract TransparentDonationRouter is ReentrancyGuard, Ownable {
     /// @notice Orgs the owner has vetted as legitimate Endaoment entities.
     ///         `donate` forwards only to orgs mapped `true` here (H1).
     mapping(address => bool) public allowedOrgs;
+
+    /// @notice Owner-appointed key allowed to trigger `routeHeld` (C1). This key
+    ///         never custodies funds — it only chooses WHEN an already-settled
+    ///         gross is split, and only toward owner-allowlisted orgs. The zero
+    ///         address disables operator routing (owner remains a fallback).
+    address public operator;
+
+    /// @notice Session refs `routeHeld` has already consumed. On-chain
+    ///         idempotency: a webhook double-fire (or a compromised operator
+    ///         replay) can never split the same settlement twice.
+    mapping(bytes32 => bool) public routedSessions;
 
     /// @notice Platform fee in basis points (1%). Hardcoded, non-mutable.
     uint256 public constant FEE_BPS = 100;
@@ -66,6 +97,23 @@ contract TransparentDonationRouter is ReentrancyGuard, Ownable {
     /// @param org The org whose allowance changed.
     /// @param allowed New state: `true` = donate-eligible, `false` = revoked.
     event OrgAllowanceUpdated(address indexed org, bool allowed);
+
+    /// @notice Emitted whenever the owner rotates the routing operator.
+    /// @param previousOperator The key being replaced (zero if none).
+    /// @param newOperator The newly appointed key (zero disables routing).
+    event OperatorUpdated(address indexed previousOperator, address indexed newOperator);
+
+    /// @notice Emitted once per routed HELD settlement (fiat on-ramp path).
+    ///         Distinct from `DonationRouted`: there is no donor address on this
+    ///         path (the donor paid fiat), so the settlement is attributed to an
+    ///         off-chain session ref instead.
+    /// @param sessionRef Unique reference to the on-ramp session (e.g.
+    ///        `keccak256(sessionId)`), consumed exactly once.
+    /// @param org Endaoment org Entity the net was forwarded to.
+    /// @param gross Held USDC routed for this session.
+    /// @param fee Platform fee skimmed to the treasury.
+    /// @param net Amount forwarded to `org` via its `donate()`.
+    event HeldDonationRouted(bytes32 indexed sessionRef, address indexed org, uint256 gross, uint256 fee, uint256 net);
 
     /// @param _usdc USDC token address on the target network.
     /// @param _treasury Address that receives the platform fee.
@@ -134,5 +182,64 @@ contract TransparentDonationRouter is ReentrancyGuard, Ownable {
         IEndaomentEntity(endaomentOrg).donate(net);
 
         emit DonationRouted(msg.sender, endaomentOrg, amount, fee, net);
+    }
+
+    /// @notice Appoints (or clears) the operator allowed to route held
+    ///         settlements. Owner-only; zero disables operator routing while the
+    ///         owner keeps working as a fallback caller of `routeHeld`.
+    /// @param newOperator The key to appoint, or zero to clear.
+    function setOperator(address newOperator) external onlyOwner {
+        address previous = operator;
+        operator = newOperator;
+        emit OperatorUpdated(previous, newOperator);
+    }
+
+    /// @notice Routes USDC the contract ALREADY holds: skims the 1% platform fee
+    ///         to the treasury and forwards the net to `endaomentOrg` via its
+    ///         `donate()`. This is the fiat on-ramp path (C1): Stripe settles
+    ///         with a plain ERC-20 transfer into this contract — it cannot call
+    ///         `donate()` — so an operator triggers the split per settled
+    ///         session after the webhook confirms settlement.
+    /// @dev Checks-effects-interactions; shares the `nonReentrant` guard with
+    ///      `donate`. `sessionRef` is consumed before any token movement, so a
+    ///      replay reverts even if the off-chain webhook dedup fails.
+    ///
+    ///      TRUST MODEL (review S1): the (sessionRef, org, amount) triple is
+    ///      caller-supplied — the contract cannot observe plain ERC-20
+    ///      settlements, so it cannot verify the triple against the Stripe
+    ///      session on-chain. The held-balance check bounds `amount` at the
+    ///      POOLED balance across all unrouted settlements, not per session:
+    ///      with several settlements in flight, an inflated `amount` from the
+    ///      trusted operator would consume other sessions' held funds (toward
+    ///      an allowlisted org only, never an arbitrary address). Compensating
+    ///      controls are operational until the relayer epic lands a per-session
+    ///      commitment design — see ADR 0002 amendment and the runbook.
+    /// @param sessionRef Unique non-zero reference to the settled on-ramp
+    ///        session (e.g. `keccak256(sessionId)`).
+    /// @param endaomentOrg Org Entity that receives the net donation.
+    /// @param amount Gross USDC (6 decimals) settled for this session.
+    function routeHeld(bytes32 sessionRef, address endaomentOrg, uint256 amount) external nonReentrant {
+        // Checks
+        if (msg.sender != operator && msg.sender != owner()) revert NotOperator(msg.sender);
+        if (sessionRef == bytes32(0)) revert ZeroSessionRef();
+        if (endaomentOrg == address(0)) revert ZeroAddress();
+        if (!allowedOrgs[endaomentOrg]) revert OrgNotAllowed(endaomentOrg);
+        if (amount == 0) revert ZeroAmount();
+        // Replay before balance: a webhook double-fire must surface as
+        // SessionAlreadyRouted, not read as a funding problem (review L2).
+        if (routedSessions[sessionRef]) revert SessionAlreadyRouted(sessionRef);
+        uint256 held = usdc.balanceOf(address(this));
+        if (amount > held) revert InsufficientHeldBalance(amount, held);
+
+        // Effects
+        routedSessions[sessionRef] = true;
+        (uint256 fee, uint256 net) = previewSplit(amount);
+
+        // Interactions
+        usdc.safeTransfer(treasury, fee);
+        usdc.forceApprove(endaomentOrg, net);
+        IEndaomentEntity(endaomentOrg).donate(net);
+
+        emit HeldDonationRouted(sessionRef, endaomentOrg, amount, fee, net);
     }
 }
