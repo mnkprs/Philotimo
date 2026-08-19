@@ -5,6 +5,21 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {TransparentDonationRouter} from "../../src/TransparentDonationRouter.sol";
 
+/// @dev Minimal view surface of Endaoment's Registry needed to predict what
+///      their `donate()` does with our forwarded net: it skims a donation fee
+///      (expressed in zoc, parts per 10,000) to the registry's treasury before
+///      crediting the org Entity's balance.
+interface IEndaomentRegistry {
+    function getDonationFeeWithOverrides(address entity) external view returns (uint32);
+    function treasury() external view returns (address);
+}
+
+/// @dev Minimal view surface of an Endaoment Entity: every entity exposes the
+///      registry that governs its fees.
+interface IEndaomentEntityView {
+    function registry() external view returns (IEndaomentRegistry);
+}
+
 /// @title RouterFork — forked Base mainnet integration (Task 5, Epic-5 gated)
 /// @notice Validates the full donate() flow against *real* USDC and a *real*
 ///         Endaoment org Entity on a Base mainnet fork — the one thing the
@@ -25,6 +40,10 @@ contract RouterForkTest is Test {
     address internal constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
     uint256 internal constant DONATION = 100e6; // $100 USDC (6 decimals)
+
+    /// @dev Endaoment expresses fees in "zoc" — parts per 10,000 (their
+    ///      contracts' Math.ZOC). `getDonationFeeWithOverrides` returns zoc.
+    uint256 internal constant ENDAOMENT_ZOC = 10_000;
 
     IERC20 internal usdc;
     TransparentDonationRouter internal router;
@@ -58,9 +77,13 @@ contract RouterForkTest is Test {
         forkReady = true;
     }
 
-    /// @notice On a real Base fork, a $100 donation skims $1 to the treasury and
-    ///         forwards $99 into the real org via its own `donate()`. Asserted as
-    ///         balance *deltas* so the org's pre-existing balance doesn't matter.
+    /// @notice On a real Base fork, a $100 donation skims $1 to our treasury and
+    ///         forwards $99 into the real org via its own `donate()` — where
+    ///         Endaoment's Registry then takes *its* donation fee (1.5% today,
+    ///         read live from the registry, never hardcoded) to Endaoment's
+    ///         treasury before crediting the org. Asserted as balance *deltas*
+    ///         so pre-existing balances don't matter, with a conservation check
+    ///         that the forwarded net splits exactly org + Endaoment fee.
     function testFork_Donate_RealUsdc_RealOrg() public {
         if (!forkReady) {
             vm.skip(true, "BASE_RPC_URL / ENDAOMENT_ORG unset (Epic-5 gated)");
@@ -69,11 +92,21 @@ contract RouterForkTest is Test {
 
         (uint256 expectedFee, uint256 expectedNet) = router.previewSplit(DONATION);
 
+        // Endaoment's own fee accounting, read from the live registry: their
+        // Entity.donate(net) credits the org `net - net*feeZoc/ZOC` and sends
+        // the difference to the registry treasury.
+        IEndaomentRegistry registry = IEndaomentEntityView(endaomentOrg).registry();
+        uint256 feeZoc = registry.getDonationFeeWithOverrides(endaomentOrg);
+        address endaomentTreasury = registry.treasury();
+        uint256 expectedEndaomentFee = (expectedNet * feeZoc) / ENDAOMENT_ZOC;
+        uint256 expectedOrgCredit = expectedNet - expectedEndaomentFee;
+
         // Real USDC has no public mint; `deal` overrides the donor's balance slot.
         deal(BASE_USDC, donor, DONATION);
 
         uint256 treasuryBefore = usdc.balanceOf(treasury);
         uint256 orgBefore = usdc.balanceOf(endaomentOrg);
+        uint256 endaomentTreasuryBefore = usdc.balanceOf(endaomentTreasury);
 
         vm.startPrank(donor);
         usdc.approve(address(router), DONATION);
@@ -83,10 +116,21 @@ contract RouterForkTest is Test {
         assertEq(
             usdc.balanceOf(treasury) - treasuryBefore, expectedFee, "treasury should receive the 1% fee in real USDC"
         );
+        uint256 orgDelta = usdc.balanceOf(endaomentOrg) - orgBefore;
         assertEq(
-            usdc.balanceOf(endaomentOrg) - orgBefore,
+            orgDelta,
+            expectedOrgCredit,
+            "org should be credited the forwarded net minus Endaoment's registry donation fee"
+        );
+        assertEq(
+            usdc.balanceOf(endaomentTreasury) - endaomentTreasuryBefore,
+            expectedEndaomentFee,
+            "Endaoment's treasury should receive its registry donation fee"
+        );
+        assertEq(
+            orgDelta + expectedEndaomentFee,
             expectedNet,
-            "org should receive the 99% net via its real donate()"
+            "forwarded net must be fully conserved across org credit + Endaoment fee"
         );
         assertEq(usdc.balanceOf(donor), 0, "donor should be fully debited the gross");
         assertEq(usdc.balanceOf(address(router)), 0, "router should retain no USDC after routing");
