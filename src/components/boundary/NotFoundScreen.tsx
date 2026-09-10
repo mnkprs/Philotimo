@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { GradientMesh } from "@/components/brand/GradientMesh";
 import { Wordmark } from "@/components/brand/Wordmark";
 import { ArrowRight } from "@/components/ui/ArrowRight";
@@ -406,12 +408,12 @@ function NotFoundFooter() {
       >
         <Wordmark size={12} color={colors.inkMute} />
         <div style={{ display: "flex", gap: 18 }}>
-          <a
+          <Link
             href="/#how-it-works"
             style={{ color: colors.primary, textDecoration: "none" }}
           >
             What is Philotimo?
-          </a>
+          </Link>
           <a
             href="mailto:hello@philotimo.app"
             style={{ color: colors.inkMute, textDecoration: "none" }}

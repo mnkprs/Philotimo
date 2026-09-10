@@ -11,6 +11,11 @@ updates:
       # Batch low-risk dev/tooling bumps into one PR to cut review noise.
       dev-dependencies:
         dependency-type: development
+    ignore:
+      # typescript-eslint does not support TS 7 yet ("typescript-eslint does
+      # not support TS 7.0" failed lint on #50). Lift once it does.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions used by the workflows above.
   - package-ecosystem: github-actions

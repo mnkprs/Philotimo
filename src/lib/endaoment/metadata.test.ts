@@ -14,7 +14,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { MockedFunction } from "vitest";
 import { resolveOrgMetadata, OrgNotFoundError } from "./metadata";
 import type { EndaomentLiveOrg } from "./api";
-import type { EndaomentOrgMetadata } from "@/types/charity";
 
 // ---------------------------------------------------------------------------
 // Module mocks

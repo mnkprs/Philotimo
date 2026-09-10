@@ -1,7 +1,7 @@
 # Epic 6 — Live Transparency Receipt Page (Pizza Tracker) — TDD Plan
 
 > **GitHub issue:** [#7 — Epic 6 — Live transparency receipt page (Pizza Tracker)](https://github.com/mnkprs/Philotimo/issues/7)
-> **Status:** IMPLEMENTED (Tasks 0–8) on `epic-6-receipt-page` via parallel TDD waves — 745 tests green, `tsc` clean. Task 0 uses a **mock two-transfer fixture** (`src/lib/receipt/fixtures.ts`); live Base Sepolia broadcast + verification remain **deferred** (R2). Task 9 (Playwright responsive/a11y sweep) **skipped** — verify manually. Not yet PR'd.
+> **Status:** IMPLEMENTED (Tasks 0–8) on `epic-6-receipt-page` via parallel TDD waves — 745 tests green, `tsc` clean. Task 0 uses a **mock two-transfer fixture** (`src/lib/receipt/fixtures.ts`); live Base Sepolia broadcast + verification remain **deferred** (R2). Task 9 (Playwright responsive/a11y sweep) **skipped** — verify manually. **Merged in #24** (mainnet-correctness fixes #26); issue #7 closed. Remaining follow-ups live in `prompts/post-epic-actions.md` (E6.x).
 > **Branch:** `epic-6-receipt-page`, to be created off `epic-5-endaoment` (Epic 6 consumes the `src/lib/endaoment/*` layer that has not yet merged to `main`).
 > **Depends on:** Epic 4 (router + `DonationRouted`), Epic 5 (charity registry, metadata, `verifyDonation`, `EndaomentBadge`).
 > **Open / load-bearing items:**

@@ -31,12 +31,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Advisory for now: the codebase carries a large pre-existing ESLint
-      # backlog. Surface issues without failing CI; tighten to blocking once
-      # the backlog is cleared.
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       - name: Type-check
         run: npx tsc --noEmit
