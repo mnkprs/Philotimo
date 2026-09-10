@@ -1,7 +1,7 @@
 # Epic 5 — Endaoment Integration — TDD Plan
 
 > **GitHub issue:** [#6 — Epic 5 — Endaoment integration](https://github.com/mnkprs/Philotimo/issues/6)
-> **Status:** IN PROGRESS — Task 1 (Types + Charity view) complete. Next: Task 2 (Endaoment REST client).
+> **Status:** COMPLETE — Tasks 1–6 merged in #16; Base Sepolia org addresses wired in #38; issue #6 closed. Remaining follow-ups live in `prompts/post-epic-actions.md` (E5.x).
 > **Branch:** `epic-5-endaoment` (created off `epic-5-receipt-flow` after committing the in-flight-processing scaffolding per Branch Hygiene below).
 > **Open item:** Real Base / Base Sepolia org Entity addresses for PCRF/WCK/Direct Relief are NOT yet confirmed — `ENDAOMENT_ORG_ADDRESSES` ships intentionally empty (no fabricated/zero placeholders). `getCharity` returns `endaomentOrgAddress: null` until verified addresses land (sourced via Task 2/3). The receipt route renders an unverified state for null addresses.
 > **Decisions locked (this session):** (1) Sepolia resolves full Endaoment metadata via a **mainnet snapshot keyed by EIN** + a per-chain org **address** map; (2) this issue **includes** the `/receipt/[txid]` route to satisfy acceptance end-to-end.

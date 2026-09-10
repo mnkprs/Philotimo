@@ -55,7 +55,6 @@ export function EndaomentBadge({ href, size = "md" }: EndaomentBadgeProps) {
     />
   );
 
-  const label = "Verified by Endaoment";
   const ariaLabel = href
     ? "Verified by Endaoment — view on BaseScan"
     : "Verified by Endaoment";

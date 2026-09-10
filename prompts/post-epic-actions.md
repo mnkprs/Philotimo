@@ -1,7 +1,7 @@
 # Post-Epic Action Backlog
 
 > **Purpose:** Single home for (1) the **human-only go-live checklist** — external accounts, credentials, funded keys, on-chain actions, and legal/compliance work that an agent *cannot* do for you — and (2) deferred engineering follow-ups and open decisions accumulated across Epics 1–6. Per project decision, these are **not actioned mid-epic** — they are revisited **after all planned epics are shipped**.
-> **Status:** OPEN backlog — last updated 2026-05-22.
+> **Status:** OPEN backlog — last updated 2026-09-10 (engineering rows reconciled against `main` @ `08e02f7`; resolved rows moved into each section's "Resolved" note). Operator steps for Epics 3/4 live in [HUMAN-ACTIONS.md](HUMAN-ACTIONS.md). **Next engineering epic:** the settled-webhook → `routeHeld` relayer + per-session commitment (ADR 0002 amendment) — not yet planned.
 > **Convention:** Each item links its origin (epic plan, env line, or runbook) and a one-line trigger/condition for when it becomes actionable. `VERIFY` = needs a quick confirmation it isn't already resolved.
 
 ---
@@ -77,9 +77,7 @@
 
 | # | Item | Status | Trigger / Notes |
 |---|---|---|---|
-| E1.1 | `LiveReceiptStrip` landing section | OPEN | Deferred — needs Epic 6 live-receipt data. Build as a follow-up once Epic 6 ships a queryable recent-donations source. |
-
-> Resolved (no action): `CreamBand`, `HowItWorks`, `ClosingCTA`, `AuthorityStrip` shipped in follow-ups; Endaoment Org ID `TODO-*` stubs removed in Epic 5 Task 1.
+> Resolved (no action): E1.1 `LiveReceiptStrip` wired with a mainnet-only mount (#37); `CreamBand`, `HowItWorks`, `ClosingCTA`, `AuthorityStrip` shipped in follow-ups; Endaoment Org ID `TODO-*` stubs removed in Epic 5 Task 1.
 
 ---
 
@@ -98,11 +96,9 @@
 
 | # | Item | Status | Trigger / Notes |
 |---|---|---|---|
-| E3.1 | Persistent session/transaction store | OPEN | In-memory store is MVP-only. Move to Postgres/Redis (project already has a KV interface in `src/lib/kv/`) before any multi-instance / production deploy. |
-| E3.2 | Route-layer rate limiting on `/api/onramp/session` | OPEN | Idempotency via `clientRequestId` is client-trust; a misbehaving client could spam Stripe. Add server-side rate limiting. |
-| E3.3 | L1 — webhook handler comment tightened (`webhook-handler.ts` ~111–116) | VERIFY | Remediation plan task; confirm the comment no longer implies Stripe redelivery after a 200. |
+| E3.4 | Automate settled-webhook → `routeHeld` (relayer) + per-session commitment | OPEN — **next epic** | Settled on-ramp USDC sits held in the router until an operator runs `routeHeld` by hand (HUMAN-ACTIONS §5.4). `routeHeld` can only bound `amount` at the pooled balance (review S1); the per-session commitment design ships with the relayer. See `docs/adr/0002-fees-on-chain.md`. |
 
-> Resolved (no action): L2 dead `stubSubmit.ts` deleted (confirmed gone 2026-05-22).
+> Resolved (no action): E3.1 Vercel KV session store (`src/lib/kv/vercel-kv-store.ts`, PR #25); E3.2 server-side rate limiting on `/api/onramp/session` (`src/lib/ratelimit/`); E3.3 webhook-handler comment now states the route acks with 200 (confirmed 2026-09-10); L2 dead `stubSubmit.ts` deleted.
 
 ---
 
@@ -110,7 +106,7 @@
 
 | # | Item | Status | Trigger / Notes |
 |---|---|---|---|
-| E4.1 | Un-gate `test/fork/RouterFork.t.sol` | OPEN | Fork test `vm.skip`s unless `BASE_RPC_URL` + `ENDAOMENT_ORG` are set. Once real org addresses are confirmed (E5.1), wire the env and run the 1/99-split fork assertion in CI. |
+| E4.1 | Run the fork suite in CI | OPEN (optional) | `RouterFork.t.sol` ran green on a live Base mainnet fork 2026-08-19 (#52), but still `vm.skip`s in CI because `BASE_RPC_URL` / `ENDAOMENT_ORG` aren't set there. Add them as CI secrets (pinned `FORK_BLOCK`) if you want it gated on every PR. |
 
 > Resolved (no action): Task 7 receipt-decoder handshake (`DonationRouted` event shape) complete; consumed by Epic 5.
 
@@ -120,7 +116,7 @@
 
 | # | Item | Status | Trigger / Notes |
 |---|---|---|---|
-| E5.1 | **Source & commit real org Entity addresses** (PCRF / WCK / Direct Relief, Base + Base Sepolia) | OPEN — **blocks acceptance** | All three ship with `mainnetAddress`/`endaomentOrgAddress: null` (no fabricated placeholders, per plan). Until confirmed, `verifyDonation` returns `verified:false` (`no-org-address-for-chain`) and the acceptance criterion *"real Base Sepolia tx → Verified by Endaoment badge"* cannot pass. Source via a one-time live `fetchOrgByEin` call, then update `snapshot.json` + `orgs.ts`. |
+| E5.1 | **Commit Base mainnet org Entity addresses** (PCRF / WCK / Direct Relief) | OPEN — before mainnet | Base **Sepolia** addresses are wired (#38). **Mainnet** addresses were resolved and verified live 2026-08-19 (table in [HUMAN-ACTIONS.md §2](HUMAN-ACTIONS.md)) but are **not yet in `src/`** — commit them to `snapshot.json` / `orgs.ts` so mainnet `verifyDonation` can pass. |
 | E5.2 | Fallback-policy granularity in `metadata.ts` | OPEN (decision) | Current policy: **any** API error → snapshot fallback; throw only when neither source has the EIN. Decide whether to distinguish retryable (503 → retry) from terminal (404 → skip fallback, throw). One-spot change in the catch block; case (a)/(b)/(c) tests unaffected. |
 | E5.3 | Narrow `EndaomentOrgMetadata.mainnetAddress` back to `Address` | OPTIONAL | Widened to `Address \| null` to support the no-address state (E5.1). Narrow once real addresses are sourced, if a non-null guarantee is wanted. tsc currently clean either way. |
 | E5.4 | Richer 5-stage receipt composition | OPEN (follow-up) | `/receipt/[txid]` resolves charity name + verification badge + on-chain gross/fee/net. Off-chain swap/settlement stage fields the `DonationRouted` event does not carry are out of Epic 5 scope. Ties to E2.2. |
@@ -133,8 +129,8 @@
 
 | # | Item | Status | Trigger / Notes |
 |---|---|---|---|
-| E6.1 | **Thread an explicit `chainId` into server-side OG metadata** | OPEN — **fix before mainnet** | Review H4. `loadReceiptForMetadata` defaults `chainId` to `baseSepolia.id`, and both callsites — `generateMetadata` (`app/receipt/[txid]/page.tsx`) and the OG image route (`opengraph-image.tsx`) — omit it. On Base **mainnet** this silently reads against Sepolia (`getRouterAddress` returns the Sepolia router; verification fails for real donations → generic fallback card). Latent today (whole app runs on Sepolia). Fix: source `chainId` from env (`NEXT_PUBLIC_CHAIN`) / route / searchParam and pass it explicitly; make the function default fail loudly instead of falling back to testnet. Ties to the `NEXT_PUBLIC_CHAIN=base` go-live step (§E). |
-| E6.2 | Harden the network label in `buildReceiptBundle` | OPEN | Review M2. `input.chainId === 8453 ? "Base" : "Base Sepolia"` labels **any** non-mainnet id as "Base Sepolia" — misleading on a transparency receipt for a misconfigured/unknown chain. Fix: match `base.id` / `baseSepolia.id` explicitly from `wagmi/chains` and surface "Unknown" for anything else. Cheap and unambiguous; bundled here only because it shares the mainnet-readiness theme with E6.1. |
+| E6.1 | **Thread an explicit `chainId` into server-side OG metadata** | RESOLVED (#26) | `loadReceiptForMetadata` now requires `chainId` and throws on a non-finite value. Original note — review H4. `loadReceiptForMetadata` defaults `chainId` to `baseSepolia.id`, and both callsites — `generateMetadata` (`app/receipt/[txid]/page.tsx`) and the OG image route (`opengraph-image.tsx`) — omit it. On Base **mainnet** this silently reads against Sepolia (`getRouterAddress` returns the Sepolia router; verification fails for real donations → generic fallback card). Latent today (whole app runs on Sepolia). Fix: source `chainId` from env (`NEXT_PUBLIC_CHAIN`) / route / searchParam and pass it explicitly; make the function default fail loudly instead of falling back to testnet. Ties to the `NEXT_PUBLIC_CHAIN=base` go-live step (§E). |
+| E6.2 | Harden the network label in `buildReceiptBundle` | RESOLVED (#26) | Unknown chain ids now render `"Unknown"`. Original note — review M2. `input.chainId === 8453 ? "Base" : "Base Sepolia"` labels **any** non-mainnet id as "Base Sepolia" — misleading on a transparency receipt for a misconfigured/unknown chain. Fix: match `base.id` / `baseSepolia.id` explicitly from `wagmi/chains` and surface "Unknown" for anything else. Cheap and unambiguous; bundled here only because it shares the mainnet-readiness theme with E6.1. |
 
 > Fixed & green this session (no action): review H1 (ESLint `set-state-in-effect` error in `useReceipt`), H2 (`PizzaTracker` keyboard/touch a11y for fee detail), H3 (`ReceiptSkeleton` `role="status"`/`aria-live`), M4 (gross-side fee-split invariant guard in `verify.ts` + `decodeReceipt.ts`) and M1 (`verifyDonation` throw-surface JSDoc). Full suite 755/755, `tsc --noEmit` + ESLint clean, `next build` passing. Remaining review MEDIUM/LOW items (M3 `formatUnits` precision, M5 server `notFound()` for malformed txid, M6 `React.cache()` dedup, function-length, magic-number LOWs) left as optional polish in the [review doc](.claude/reviews/epic-6-receipt-review.md).
 
@@ -148,13 +144,13 @@ Code-side hardening has shipped on `epic-7-production-readiness` (waves 1–4: C
 |---|---|---|---|
 | E7.1 | Provision real Sentry DSN + verify `/api/debug/sentry` end-to-end | OPEN — **acceptance** | Code path is in place (`@sentry/nextjs` v10 init in `src/instrumentation.ts` / `src/instrumentation-client.ts`, capture wired into `webhook-handler.ts` and `loadReceiptForMetadata.ts`, safe no-op without DSN). Closes when section A "Sentry project + DSN" is done **and** a manual GET of `/api/debug/sentry` (or `SENTRY_DEBUG_ROUTE_ENABLED=true` non-prod) appears in Sentry. |
 | E7.2 | First production deploy + securityheaders.com check | OPEN — **acceptance** | Deploy + URL via section E. Run https://securityheaders.com/ on the prod URL and confirm A/A+ score. |
-| E7.3 | Scrub PII (Stripe session id) from captured webhook errors via Sentry `beforeSend` | OPEN (follow-up) | The webhook handler's hash-less-settlement error message contains the Stripe session id; it would surface in Sentry event titles once a real DSN lands. Add a `beforeSend` hook in `src/instrumentation.ts`/`*.config.ts` that strips known PII fragments. Tracked as a GitHub issue (Epic 7 / 1B follow-up). |
-| E7.4 | Validate Lighthouse `perf ≥ 0.90` on `/`, `/donate/<slug>`, `/receipt/<txid>` after `force-dynamic` on landing | OPEN (follow-up) | `lighthouse.yml` will run on the next PR. Force-dynamic on landing (required for nonce-CSP) may regress LCP/TBT — plan risk R2. If the gate fails, address with image/font/JS-budget fixes in a separate PR. Tracked as a GitHub issue. |
-| E7.5 | Security-reviewer pass on `epic-7-production-readiness` before merge | OPEN (follow-up) | Per project rules, security-sensitive slices need a `security-reviewer` agent pass: commit `3f6a163` (Sentry capture surfaces + PII surface) and commit `3dce7f6` (CSP host coverage + nonce middleware). Tracked as a GitHub issue. |
-| E7.6 | Fix or remove the footer `/fee-policy` link | OPEN (follow-up) | `src/components/landing/Footer.tsx` links to `/fee-policy`, but no route exists. Either create the page (likely sourcing from `FeeDisclosure`) or remove the link. Pre-existing — surfaced by Epic 7 / 2B. Tracked as a GitHub issue. |
-| E7.7 | Phase 0 — tick E6.1, E6.2, and "CI green on main with build step" boxes on issue #8 | OPEN (hygiene) | Code is shipped + tested (PR #26 for E6.1/E6.2; this branch's wave 1 for the CI build step). Run `npm test` to confirm, then update the issue checkboxes with commit-link evidence. |
+| E7.3 | Scrub PII (Stripe session id) from captured webhook errors via Sentry `beforeSend` | RESOLVED (#35, closes #29) | The webhook handler's hash-less-settlement error message contains the Stripe session id; it would surface in Sentry event titles once a real DSN lands. Add a `beforeSend` hook in `src/instrumentation.ts`/`*.config.ts` that strips known PII fragments. Tracked as a GitHub issue (Epic 7 / 1B follow-up). |
+| E7.4 | Validate Lighthouse `perf ≥ 0.90` on `/`, `/donate/<slug>`, `/receipt/<txid>` after `force-dynamic` on landing | RESOLVED (#30 closed; Lighthouse gate green on PRs) | `lighthouse.yml` will run on the next PR. Force-dynamic on landing (required for nonce-CSP) may regress LCP/TBT — plan risk R2. If the gate fails, address with image/font/JS-budget fixes in a separate PR. Tracked as a GitHub issue. |
+| E7.5 | Security-reviewer pass on `epic-7-production-readiness` before merge | RESOLVED (#31 closed) | Per project rules, security-sensitive slices need a `security-reviewer` agent pass: commit `3f6a163` (Sentry capture surfaces + PII surface) and commit `3dce7f6` (CSP host coverage + nonce middleware). Tracked as a GitHub issue. |
+| E7.6 | Fix or remove the footer `/fee-policy` link | RESOLVED (#34, closes #32) | `src/components/landing/Footer.tsx` links to `/fee-policy`, but no route exists. Either create the page (likely sourcing from `FeeDisclosure`) or remove the link. Pre-existing — surfaced by Epic 7 / 2B. Tracked as a GitHub issue. |
+| E7.7 | Phase 0 — tick E6.1, E6.2, and "CI green on main with build step" boxes on issue #8 | RESOLVED (#8 closed) | Code is shipped + tested (PR #26 for E6.1/E6.2; this branch's wave 1 for the CI build step). Run `npm test` to confirm, then update the issue checkboxes with commit-link evidence. |
 | E7.8 | Legal counsel sign-off on `/terms`, `/privacy`, fee disclosure | OPEN | Draft copy shipped (`src/app/terms/page.tsx`, `src/app/privacy/page.tsx`, `src/components/legal/FeeDisclosure.tsx`). Closes via Section F rows (Terms/Privacy + Fee-disclosure sign-off). |
 
-> Note (decision pending): the 2D agent during wave 1 created `scripts/fetch-endaoment-orgs.mjs` (an Endaoment org-lookup helper for E5.1) **outside its assigned footprint**. The file is left **untracked** for an explicit accept/reject decision — useful for E5.1 if the EIN-based lookup path is wanted, ignore otherwise.
+> Resolved: `scripts/fetch-endaoment-orgs.mjs` was accepted and committed with #38 (used to fetch the Sepolia org entities).
 
 > `style-src 'unsafe-inline'` is a deliberate CSP concession (Tailwind / Next inject inline styles); documented in `src/lib/security/headers.ts`. Not tracked as an action — accept-and-document.

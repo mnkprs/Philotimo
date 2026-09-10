@@ -17,7 +17,6 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Address } from "viem";
 import { baseSepolia } from "wagmi/chains";
 
 import {
@@ -33,7 +32,6 @@ import {
   EUDAIMONIA_FEE,
   NET,
   ENDAOMENT_FEE,
-  NET_TO_ENTITY,
 } from "@/lib/receipt/fixtures";
 import {
   MAX_POLL_ATTEMPTS,
